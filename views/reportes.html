@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+    <title>Nuevo Reporte</title>
+
+    <!-- CSS -->
+
+    <link rel="stylesheet"
+    href="/css/styles.css">
+
+    <!-- LEAFLET CSS -->
+
+    <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+
+    <div class="navbar">
+
+        <h2>Sistema Basura</h2>
+
+        <div>
+
+            <a href="/dashboard">
+
+                Dashboard
+
+            </a>
+
+            <a href="/lista-reportes">
+
+                Ver Reportes
+
+            </a>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- CONTENIDO -->
+
+    <div class="container">
+
+        <h1>
+
+            Nuevo Reporte
+
+        </h1>
+
+
+        <form
+        id="formReporte"
+        enctype="multipart/form-data">
+
+
+            <!-- UBICACION -->
+
+            <input
+            type="text"
+            id="ubicacion"
+            placeholder="Zona o colonia"
+            required>
+
+
+            <!-- TIPO -->
+
+            <input
+            type="text"
+            id="tipo"
+            placeholder="Tipo de residuo"
+            required>
+
+
+            <!-- DESCRIPCION -->
+
+            <textarea
+            id="descripcion"
+            placeholder="Descripción"
+            required></textarea>
+
+
+            <!-- IMAGEN -->
+
+            <label>
+
+                Subir Fotografía
+
+            </label>
+
+            <input
+            type="file"
+            id="imagen"
+            accept="image/*">
+
+
+            <!-- MAPA -->
+
+            <h3>
+
+                Ubicación en el mapa
+
+            </h3>
+
+            <div id="map"></div>
+
+
+            <!-- COORDENADAS -->
+
+            <input
+            type="hidden"
+            id="latitud">
+
+            <input
+            type="hidden"
+            id="longitud">
+
+
+            <!-- BOTON -->
+
+            <button type="submit">
+
+                Guardar Reporte
+
+            </button>
+
+        </form>
+
+    </div>
+
+
+    <!-- LEAFLET JS -->
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <!-- APP JS -->
+
+    <script src="/js/app.js"></script>
+
+</body>
+</html>
