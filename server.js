@@ -2,46 +2,32 @@ const express = require('express');
 
 const path = require('path');
 
-const multer = require('multer');
-
 const session = require('express-session');
 
-const db = require('./database');
+const multer = require('multer');
+
+const fs = require('fs');
+
+const db = require('./database/database');
 
 const app = express();
 
 
+
 // ====================================
-// SESIONES
+// CREAR CARPETA UPLOADS
 // ====================================
 
-app.use(session({
+if(!fs.existsSync('uploads')){
 
-    secret:'basura',
+    fs.mkdirSync('uploads');
 
-    resave:false,
+}
 
-    saveUninitialized:false
-
-}));
 
 
 // ====================================
-// CONFIGURACIONES
-// ====================================
-
-app.use(express.static('public'));
-
-app.use(express.urlencoded({ extended:true }));
-
-app.use(express.json());
-
-app.use('/uploads',
-express.static('uploads'));
-
-
-// ====================================
-// MULTER
+// CONFIGURAR MULTER
 // ====================================
 
 const storage = multer.diskStorage({
@@ -59,8 +45,8 @@ const storage = multer.diskStorage({
             null,
 
             Date.now() +
-            '-' +
-            file.originalname
+
+            path.extname(file.originalname)
 
         );
 
@@ -70,23 +56,66 @@ const storage = multer.diskStorage({
 
 const upload = multer({
 
-    storage:storage
+    storage
 
 });
 
 
+
 // ====================================
-// PAGINAS
+// CONFIGURACIONES
 // ====================================
 
-app.get('/', (req,res)=>{
+app.use(express.urlencoded({
+
+    extended:true
+
+}));
+
+app.use(express.json());
+
+app.use(express.static('public'));
+
+app.use('/uploads',
+
+express.static('uploads'));
+
+
+
+// ====================================
+// SESIONES
+// ====================================
+
+app.use(session({
+
+    secret:'basura',
+
+    resave:false,
+
+    saveUninitialized:true
+
+}));
+
+
+
+// ====================================
+// RUTAS HTML
+// ====================================
+
+app.get('/',
+
+(req,res)=>{
 
     res.sendFile(
 
         path.join(
+
             __dirname,
+
             'views',
+
             'index.html'
+
         )
 
     );
@@ -94,14 +123,21 @@ app.get('/', (req,res)=>{
 });
 
 
-app.get('/registro', (req,res)=>{
+
+app.get('/registro',
+
+(req,res)=>{
 
     res.sendFile(
 
         path.join(
+
             __dirname,
+
             'views',
+
             'registro.html'
+
         )
 
     );
@@ -109,14 +145,21 @@ app.get('/registro', (req,res)=>{
 });
 
 
-app.get('/login', (req,res)=>{
+
+app.get('/login',
+
+(req,res)=>{
 
     res.sendFile(
 
         path.join(
+
             __dirname,
+
             'views',
+
             'login.html'
+
         )
 
     );
@@ -124,14 +167,27 @@ app.get('/login', (req,res)=>{
 });
 
 
-app.get('/dashboard', (req,res)=>{
+
+app.get('/dashboard',
+
+(req,res)=>{
+
+    if(!req.session.usuario){
+
+        return res.redirect('/login');
+
+    }
 
     res.sendFile(
 
         path.join(
+
             __dirname,
+
             'views',
+
             'dashboard.html'
+
         )
 
     );
@@ -139,14 +195,27 @@ app.get('/dashboard', (req,res)=>{
 });
 
 
-app.get('/reportes', (req,res)=>{
+
+app.get('/reportes',
+
+(req,res)=>{
+
+    if(!req.session.usuario){
+
+        return res.redirect('/login');
+
+    }
 
     res.sendFile(
 
         path.join(
+
             __dirname,
+
             'views',
+
             'reportes.html'
+
         )
 
     );
@@ -154,19 +223,33 @@ app.get('/reportes', (req,res)=>{
 });
 
 
-app.get('/lista-reportes', (req,res)=>{
+
+app.get('/lista-reportes',
+
+(req,res)=>{
+
+    if(!req.session.usuario){
+
+        return res.redirect('/login');
+
+    }
 
     res.sendFile(
 
         path.join(
+
             __dirname,
+
             'views',
+
             'lista-reportes.html'
+
         )
 
     );
 
 });
+
 
 
 // ====================================
@@ -185,11 +268,11 @@ app.post('/registro',
 
     } = req.body;
 
-    db.run(
+    try{
 
-        `INSERT INTO usuarios
+        db.prepare(`
 
-        (
+        INSERT INTO usuarios(
 
             nombre,
             correo,
@@ -197,37 +280,34 @@ app.post('/registro',
 
         )
 
-        VALUES(?,?,?)`,
+        VALUES(?,?,?)
 
-        [
+        `).run(
 
             nombre,
             correo,
             password
 
-        ],
+        );
 
-        function(err){
+        res.send(
 
-            if(err){
+            'Usuario registrado'
 
-                res.send(
-                    'Correo ya registrado'
-                );
+        );
 
-            } else {
+    }catch(error){
 
-                res.send(
-                    'Usuario registrado correctamente'
-                );
+        res.send(
 
-            }
+            'Error al registrar'
 
-        }
+        );
 
-    );
+    }
 
 });
+
 
 
 // ====================================
@@ -245,50 +325,54 @@ app.post('/login',
 
     } = req.body;
 
-    db.get(
+    const usuario =
 
-        `SELECT * FROM usuarios
+    db.prepare(`
 
-        WHERE correo = ?
-        AND password = ?`,
+    SELECT * FROM usuarios
 
-        [
+    WHERE correo = ?
 
-            correo,
-            password
+    AND password = ?
 
-        ],
+    `).get(
 
-        (err,row)=>{
-
-            if(row){
-
-                req.session.usuario = row;
-
-                res.json({
-                    success:true
-                });
-
-            } else {
-
-                res.json({
-                    success:false
-                });
-
-            }
-
-        }
+        correo,
+        password
 
     );
 
+    if(usuario){
+
+        req.session.usuario = usuario;
+
+        res.json({
+
+            success:true
+
+        });
+
+    }else{
+
+        res.json({
+
+            success:false
+
+        });
+
+    }
+
 });
+
 
 
 // ====================================
 // GUARDAR REPORTE
 // ====================================
 
-app.post('/guardar-reporte',
+app.post(
+
+'/guardar-reporte',
 
 upload.single('imagen'),
 
@@ -297,7 +381,9 @@ upload.single('imagen'),
     if(!req.session.usuario){
 
         return res.send(
+
             'Debes iniciar sesión'
+
         );
 
     }
@@ -312,66 +398,64 @@ upload.single('imagen'),
 
     } = req.body;
 
-    const usuario_id =
-    req.session.usuario.id;
+    let imagen = '';
 
-    const imagen = req.file
-    ? req.file.filename
-    : '';
+    if(req.file){
 
-    db.run(
+        imagen = req.file.filename;
 
-        `INSERT INTO reportes
+    }
 
-        (
+    try{
+
+        db.prepare(`
+
+        INSERT INTO reportes(
 
             ubicacion,
             tipo,
             descripcion,
-            imagen,
             latitud,
             longitud,
+            imagen,
             usuario_id
 
         )
 
-        VALUES(?,?,?,?,?,?,?)`,
+        VALUES(?,?,?,?,?,?,?)
 
-        [
+        `).run(
 
             ubicacion,
             tipo,
             descripcion,
-            imagen,
             latitud,
             longitud,
-            usuario_id
+            imagen,
+            req.session.usuario.id
 
-        ],
+        );
 
-        function(err){
+        res.send(
 
-            if(err){
+            'Reporte guardado'
 
-                console.log(err);
+        );
 
-                res.send(
-                    'Error al guardar'
-                );
+    }catch(error){
 
-            } else {
+        console.log(error);
 
-                res.send(
-                    'Reporte guardado correctamente'
-                );
+        res.send(
 
-            }
+            'Error al guardar'
 
-        }
+        );
 
-    );
+    }
 
 });
+
 
 
 // ====================================
@@ -382,124 +466,125 @@ app.get('/obtener-reportes',
 
 (req,res)=>{
 
-    db.all(
+    const reportes =
 
-        `SELECT * FROM reportes
-        ORDER BY id DESC`,
+    db.prepare(`
 
-        [],
+    SELECT * FROM reportes
 
-        (err,rows)=>{
+    ORDER BY id DESC
 
-            if(err){
+    `).all();
 
-                res.json([]);
-
-            } else {
-
-                res.json(rows);
-
-            }
-
-        }
-
-    );
+    res.json(reportes);
 
 });
+
 
 
 // ====================================
 // ELIMINAR REPORTE
 // ====================================
 
-app.delete('/eliminar-reporte/:id',
+app.delete(
+
+'/eliminar-reporte/:id',
 
 (req,res)=>{
 
     if(!req.session.usuario){
 
         return res.send(
-            'Debes iniciar sesión'
+
+            'No autorizado'
+
         );
 
     }
 
-    const id = req.params.id;
+    const reporte =
 
-    const usuario_id =
-    req.session.usuario.id;
+    db.prepare(`
 
-    db.get(
+    SELECT * FROM reportes
 
-        `SELECT * FROM reportes
+    WHERE id = ?
 
-        WHERE id = ?`,
+    `).get(req.params.id);
 
-        [id],
+    if(!reporte){
 
-        (err,reporte)=>{
+        return res.send(
 
-            if(!reporte){
+            'Reporte no encontrado'
 
-                return res.send(
-                    'Reporte no existe'
-                );
+        );
 
-            }
+    }
 
-            if(reporte.usuario_id
-            != usuario_id){
+    if(
 
-                return res.send(
-                    'No puedes eliminar este reporte'
-                );
+        reporte.usuario_id !==
 
-            }
+        req.session.usuario.id
 
-            db.run(
+    ){
 
-                `DELETE FROM reportes
+        return res.send(
 
-                WHERE id = ?`,
+            'No puedes eliminar este reporte'
 
-                [id],
+        );
 
-                function(err){
+    }
 
-                    if(err){
+    db.prepare(`
 
-                        res.send(
-                            'Error al eliminar'
-                        );
+    DELETE FROM reportes
 
-                    } else {
+    WHERE id = ?
 
-                        res.send(
-                            'Reporte eliminado'
-                        );
+    `).run(req.params.id);
 
-                    }
+    res.send(
 
-                }
-
-            );
-
-        }
+        'Reporte eliminado'
 
     );
 
 });
 
 
+
+// ====================================
+// LOGOUT
+// ====================================
+
+app.get('/logout',
+
+(req,res)=>{
+
+    req.session.destroy();
+
+    res.redirect('/');
+
+});
+
+
+
 // ====================================
 // SERVIDOR
 // ====================================
 
-app.listen(3000, ()=>{
+const PORT =
+
+process.env.PORT || 3000;
+
+app.listen(PORT,()=>{
 
     console.log(
 
-        'Servidor corriendo en http://localhost:3000'
+        `Servidor corriendo en puerto ${PORT}`
 
     );
 
